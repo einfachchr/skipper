@@ -17,6 +17,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"sort"
@@ -30,6 +31,7 @@ import (
 	"github.com/zalando/skipper/dataclients/kubernetes"
 	"github.com/zalando/skipper/proxy"
 	"github.com/zalando/skipper/swarm"
+	"gopkg.in/Graylog2/go-gelf.v1/gelf"
 )
 
 const (
@@ -121,6 +123,7 @@ const (
 	accessLogJSONEnabledUsage       = "when this flag is set, log in JSON format is used"
 	accessLogStripQueryUsage        = "when this flag is set, the access log strips the query strings from the access log"
 	suppressRouteUpdateLogsUsage    = "print only summaries on route updates/deletes"
+	graylogUsage                    = "address of graylog server (format: graylog.example.com:port), will enable additonal logging to graylog server via gelf"
 
 	// route sources:
 	etcdUrlsUsage                  = "urls of nodes in an etcd cluster, storing route definitions"
@@ -257,6 +260,7 @@ var (
 	accessLogJSONEnabled      bool
 	accessLogStripQuery       bool
 	suppressRouteUpdateLogs   bool
+	graylogAddr               string
 
 	// route sources:
 	etcdUrls                  string
@@ -391,6 +395,7 @@ func init() {
 	flag.BoolVar(&accessLogJSONEnabled, "access-log-json-enabled", false, accessLogJSONEnabledUsage)
 	flag.BoolVar(&accessLogStripQuery, "access-log-strip-query", false, accessLogStripQueryUsage)
 	flag.BoolVar(&suppressRouteUpdateLogs, "suppress-route-update-logs", false, suppressRouteUpdateLogsUsage)
+	flag.StringVar(&graylogAddr, "graylog-address", "", graylogUsage)
 
 	// route sources:
 	flag.StringVar(&etcdUrls, "etcd-urls", "", etcdUrlsUsage)
@@ -517,6 +522,18 @@ func main() {
 		log.Fatal(err)
 	} else {
 		log.SetLevel(logLevel)
+	}
+
+	if len(graylogAddr) > 0 {
+		log.Infof("Enabling gelf logging to graylog server on %s", graylogAddr)
+
+		gelfWriter, err := gelf.NewWriter(graylogAddr)
+		if err != nil {
+			log.Fatalf("Error creating Gelf-Writer with addr %s -> %s", graylogAddr, err)
+		}
+		gelfWriter = gelfWriter
+
+		log.SetOutput(io.MultiWriter(os.Stderr, gelfWriter))
 	}
 
 	var eus []string
