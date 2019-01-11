@@ -31,7 +31,7 @@ import (
 	"github.com/zalando/skipper/dataclients/kubernetes"
 	"github.com/zalando/skipper/proxy"
 	"github.com/zalando/skipper/swarm"
-	"gopkg.in/Graylog2/go-gelf.v1/gelf"
+	"gopkg.in/Graylog2/go-gelf.v2/gelf"
 )
 
 const (
@@ -527,13 +527,12 @@ func main() {
 	if len(graylogAddr) > 0 {
 		log.Infof("Enabling gelf logging to graylog server on %s", graylogAddr)
 
-		gelfWriter, err := gelf.NewWriter(graylogAddr)
+		gelfWriter, err := gelf.NewUDPWriter(graylogAddr)
 		if err != nil {
 			log.Fatalf("Error creating Gelf-Writer with addr %s -> %s", graylogAddr, err)
 		}
-		gelfWriter = gelfWriter
 
-		log.SetOutput(io.MultiWriter(os.Stderr, gelfWriter))
+		log.SetOutput(io.MultiWriter(os.Stdout, gelfWriter))
 	}
 
 	var eus []string
